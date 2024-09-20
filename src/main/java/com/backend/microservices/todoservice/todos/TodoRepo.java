@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 public class TodoRepo {
     static List<Todo> todoList=new ArrayList<>();
     static {
-        Todo todo1 = new Todo(1,"rashmi", "Visit India", false, new Date());
-        Todo todo2 = new Todo(2, "naveen","Play with Navya", false, new Date());
-        Todo todo3 = new Todo(3, "naveen","Learn ANgular", false, new Date());
+        Todo todo1 = new Todo(1,"John", "Visit India", false, new Date());
+        Todo todo2 = new Todo(2, "naveen","Play Cricket", false, new Date());
+        Todo todo3 = new Todo(3, "naveen","Learn Angular", false, new Date());
         todoList.add(todo1);todoList.add(todo2);todoList.add(todo3);
     }
     public List<Todo> findAll() {
