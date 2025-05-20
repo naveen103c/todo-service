@@ -1,4 +1,4 @@
-public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode jsonNode,
+	public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode jsonNode,
 			boolean isSuggestionRequired, boolean isMultiSearch, String companyNameUrlSuffix) throws Exception, BussinessException {
 
 		logger.info("Parsing response for elastic search for isSuggestionRequired :" + isSuggestionRequired
@@ -45,27 +45,31 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 		
 		boolean unitPriceCalcEligible = false;
 		
-		long customerId = utilities.getUserId();
-		if(customerId==0) {
-			CustomerCategory customerCategoryForCalc = customerCategoryRepository
-		            .findByCustomerIdAndCategoryTypeAndActiveAndDeviceId(customerId, CxCategoryEnum.UNIT_PRICE_CALCULATION.getCategoryName(), true,"DEVICE_XYZ");
-			 customerId = customerCategoryForCalc.getCustomerId();
+		
+		if(utilities.getUserId()!=null) {
+			long customerId = utilities.getUserId();
+			if(customerId==0) {
+				CustomerCategory customerCategoryForCalc = customerCategoryRepository
+			            .findByCustomerIdAndCategoryTypeAndActiveAndDeviceId(customerId, CxCategoryEnum.UNIT_PRICE_CALCULATION.getCategoryName(), true,"DEVICE_XYZ");
+				 customerId = customerCategoryForCalc.getCustomerId();
+
+			}
+			if(customerId!=0) {
+				List<CustomerCategory> customerCategory = customerCategoryRepository.findByCustomerIdAndCategoryTypeAndActive(
+						customerId, CxCategoryEnum.UNIT_PRICE_CALCULATION.getCategoryName(), true);
+				
+				if(customerCategory.size()>0) {
+					CustomerCategory  customerCategory2= customerCategory.stream().filter(t->t.getCategory().equalsIgnoreCase("B")).findFirst().orElse(null);
+					if(customerCategory2!=null) {
+						unitPriceCalcEligible=true;
+					}
+				
+					
+				}
+			}
 
 		}
-		if(customerId!=0) {
-			List<CustomerCategory> customerCategory = customerCategoryRepository.findByCustomerIdAndCategoryTypeAndActive(
-					customerId, CxCategoryEnum.UNIT_PRICE_CALCULATION.getCategoryName(), true);
-			
-			if(customerCategory.size()>0) {
-				CustomerCategory  customerCategory2= customerCategory.stream().filter(t->t.getCategory().equalsIgnoreCase("B")).findFirst().orElse(null);
-				if(customerCategory2!=null) {
-					unitPriceCalcEligible=true;
-				}
-			
 				
-			}
-		}
-		
 				
 		for (JsonNode response : responses.path("hits")) {
 			try {
@@ -125,7 +129,7 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 					
 					if (productSearchDto.getUnit() != null && productSearchDto.getPackSize() != null
 							&& Double.parseDouble(productSearchDto.getPackSize()) > 0) {
-							if(unitPriceCalcEligible){
+							if(!unitPriceCalcEligible){
 								productSearchDto
 									.setPricePerUnitLabel("₹"
 										+ df2.format(
@@ -138,7 +142,7 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 										productSearchDto.getMrp()
 										/ Double.parseDouble(productSearchDto.getPackSize()))
 						+ "/" + productSearchDto.getUnit());
-	                }
+	}
 					
 					
 					String orgCountryOfOrigin = null;
@@ -177,19 +181,21 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 								Double.parseDouble(df2.format((getDoubleValue(sourceJson, "subs_selling_price"))
 										/ (getLongValue(sourceJson, "sub_recommended_qty")))));
 
-						if(unitPriceCalcEligible){
-							if (StringUtils.isNotBlank(sellingPriceStr)) {  
+						if(!unitPriceCalcEligible){
+							 String sellingPriceStr = productSearchDto.getPricePerUnitLabel();
+							    double sellingPricePerUnit = 0.0;
+							if (StringUtils.isNotBlank(sellingPriceStr)) {
 					        sellingPriceStr = sellingPriceStr.replaceAll("[^0-9.]", "");  // Remove ₹ and unit text
 					        if (!sellingPriceStr.isEmpty()) {
 					            sellingPricePerUnit = Double.parseDouble(sellingPriceStr);
-					            }
 					        }
+					    }
 
 					    double subsSellingPrice = getDoubleValue(sourceJson, "subs_selling_price");
 					    long subRecommendedQty = getLongValue(sourceJson, "sub_recommended_qty");
 
 					    double subsPack = 1.0;
-                        String subsPackStr = getStringValue(sourceJson, "subs_pack");
+String subsPackStr = getStringValue(sourceJson, "subs_pack");
 					    if (StringUtils.isNotBlank(subsPackStr)) {
 					        subsPack = Double.parseDouble(subsPackStr);
 					    }
@@ -201,7 +207,7 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 					    productSearchDto.setSubsSavingPercentage(df2.format(calculatedSavingsPercentage) + "%");
 						
 						} else {
-							String savingsPercentage = getStingValue(sourceJson, "savings_percentage");
+							String savingsPercentage = getStringValue(sourceJson, "savings_percentage");
 							if (StringUtils.isNotBlank(savingsPercentage) && savingsPercentage.contains("%")) {
 								savingsPercentage = savingsPercentage.replace("%", "");
 								productSearchDto
@@ -209,9 +215,9 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 								} else {
 									productSearchDto.setSubsSavingPercentage(df2.format(Double.parseDouble(savingsPercentage)));
 								}
-						
 						}
-                        }else {
+						}
+						 else {
 								productSearchDto.setDiscount(
 										Double.parseDouble(df2.format((getDoubleValue(sourceJson, "original_base_discount")))));
 								productSearchDto.setSellingPrice(Double.parseDouble(df2.format(productSearchDto.getMrp()
@@ -406,4 +412,210 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 		logger.info("Successfully Parsing response for elastic search for isSuggestionRequired :" + isSuggestionRequired
 				+ " isMultiSearch :" + isMultiSearch);
 		return responseDto;
+	}
+
+	@Override
+	public ApiResponseBaseDto getCrossSellingRecommendedProducts(Set<String> offerTypeSet, Long warehouseId,
+			String sessionToken, int pageNumber, int pageSize, String productCode, Long variantId)
+			throws TechnicalException, ContractException, BussinessException {
+
+		ApiResponseBaseDto apiResponseBaseDto = new ApiResponseBaseDto();
+		Pageable pageable = PageRequest.of(pageNumber, pageSize);
+		Map<String, Object> responseMap = new HashMap<>();
+		long startTime = System.nanoTime();
+		try {
+			if (cxOtpService.validateSessionToken(sessionToken)) {
+
+				for (String offerType : offerTypeSet) {
+
+					try {
+						if (offerType.equals(SystemNameEnum.LAST_MINUTE_BUY.getName())
+								|| offerType.equals(SystemNameEnum.LIMITED_OFFER.getName())
+								|| offerType.equals(SystemNameEnum.TRENDING_IN_CITY.getName())) {
+
+							List<String> pomProductCodeSet = null;
+
+							logger.info("Fetching elastic search values for offer type: " + offerType
+									+ " and warehouseId: " + warehouseId);
+
+							long startTime2 = System.nanoTime();
+							pomProductCodeSet = orderService.fetchProductsByOfferType(warehouseId, pageNumber, pageSize,
+									offerType, false);
+							long endTime = System.nanoTime();
+							logger.info("Time taken with param offerType : " + offerType + " warehouseId : "
+									+ warehouseId + " pageable : " + pageable
+									+ " for findProductCodeByOfferTypeAndWarehouseIdAndActive query : "
+									+ TimeUnit.MILLISECONDS.convert(endTime - startTime2, TimeUnit.NANOSECONDS));
+
+							if (!offerType.equals(SystemNameEnum.TRENDING_SEARCHES.getName())
+									&& pomProductCodeSet != null && !pomProductCodeSet.isEmpty()) {
+
+								String mwmProdCode = pomProductCodeSet.toString().replace("[", "").replace("]", "")
+										.replace(", ", "\", \"");
+
+								ApiResponseBaseDto callElastic;
+								try {
+									callElastic = getSearchResult(null, warehouseId, false, "PRODUCT_SEARCH",
+											mwmProdCode, pomProductCodeSet.size(), "", variantId, 0, true);
+									List<ElasticSearchResponseDto> elasticList = sortGetCrossSellingRecommendedProducts(
+											pomProductCodeSet, callElastic.getResponseData());
+									responseMap.put("productCodeList", pomProductCodeSet);
+									responseMap.put(offerType, elasticList);
+									logger.info("Successfully fetched elastic search values for offer type: "
+											+ offerType + " and warehouseId: " + warehouseId);
+								} catch (Exception e) {
+									logger.error("Error while fetching elastic search result of product codes. Error : "
+											+ ExceptionUtils.getStackTrace(e));
+								}
+							}
+						}
+
+					} catch (Exception e) {
+						logger.error("Error while fetching elastic search result of product codes. Error : "
+								+ ExceptionUtils.getStackTrace(e));
+						throw new TechnicalException("Error while fetching elastic search result",
+								HttpStatus.INTERNAL_SERVER_ERROR);
+					}
+
+					if (offerType.equals(SystemNameEnum.NEW_ARRIVAL.getName())) {
+
+						try {
+
+							logger.info("Fetching elastic search values for offer type:"
+									+ SystemNameEnum.NEW_ARRIVAL.getName() + " and warehouseId: " + warehouseId);
+
+							List<String> mmProductCodeSet = null;
+							Calendar cal = Calendar.getInstance();
+							cal.add(Calendar.DATE, -30);
+							Date date = cal.getTime();
+
+							mmProductCodeSet = medicineMasterRepository
+									.findNewlyAddedMedInLast30Days(SystemNameEnum.HEALTH_CARE.getName(), warehouseId,
+											true, true, true, date, pageable)
+									.getContent();
+
+							if (mmProductCodeSet != null && !mmProductCodeSet.isEmpty()) {
+
+								String mwmProdCode = mmProductCodeSet.toString().replace("[", "").replace("]", "")
+										.replace(", ", "\", \"");
+								ApiResponseBaseDto callElastic;
+								try {
+									callElastic = getSearchResult(null, warehouseId, false, "PRODUCT_SEARCH",
+											mwmProdCode, mmProductCodeSet.size(), "", variantId, 0, true);
+									List<ElasticSearchResponseDto> elasticList = sortGetCrossSellingRecommendedProducts(
+											mmProductCodeSet, callElastic.getResponseData());
+									responseMap.put(SystemNameEnum.NEW_ARRIVAL.getName(), elasticList);
+									logger.info("Successfully fetched elastic search values for offer type:"
+											+ SystemNameEnum.NEW_ARRIVAL.getName() + "and warehouseId: " + warehouseId);
+								} catch (Exception e) {
+									logger.error(
+											"Error while fetching elastic search result of product codes of offer type: "
+													+ SystemNameEnum.NEW_ARRIVAL.getName() + " Error : "
+													+ ExceptionUtils.getStackTrace(e));
+								}
+							} else {
+								return apiResponseBaseDto = utilities.commonResponse(apiResponseBaseDto, new Object(),
+										"No content found", HttpStatus.NO_CONTENT, HttpStatus.NO_CONTENT.value(), null);
+							}
+
+						} catch (Exception e) {
+							logger.error("Error while fetching elastic search result of product codes of offer type: "
+									+ SystemNameEnum.NEW_ARRIVAL.getName() + " Error : "
+									+ ExceptionUtils.getStackTrace(e));
+							throw new TechnicalException("Error while fetching elastic search result",
+									HttpStatus.INTERNAL_SERVER_ERROR);
+						}
+					}
+
+					if (!StringUtils.isEmpty(offerType)
+							&& offerType.equals(SystemNameEnum.CUSTOMER_ALSO_BOUGHT.getName())
+							&& !StringUtils.isBlank(productCode)) {
+
+						List<String> crossProductCodeSet = null;
+
+						crossProductCodeSet = productWithOtcProductMappingRepository
+								.findTopOtcProductsByProductCodeForCustomerAlsoBought(productCode, true, warehouseId,
+										pageSize, pageNumber * pageSize);
+
+						if (crossProductCodeSet != null && !crossProductCodeSet.isEmpty()) {
+							List<String> productCodeSubList = crossProductCodeSet.subList(0,
+									pageSize < crossProductCodeSet.size() ? pageSize : crossProductCodeSet.size());
+							String crossProductCode = productCodeSubList.toString().replace("[", "").replace("]", "")
+									.replace(", ", "\", \"");
+
+							ApiResponseBaseDto callElastic = null;
+							try {
+								callElastic = getSearchResult(null, warehouseId, false, "PRODUCT_SEARCH",
+										crossProductCode, productCodeSubList.size(), "", variantId, 0, true);
+								List<ElasticSearchResponseDto> elasticList = sortGetCrossSellingRecommendedProducts(
+										productCodeSubList, callElastic.getResponseData());
+								responseMap.put(SystemNameEnum.CUSTOMER_ALSO_BOUGHT.getName(), elasticList);
+								logger.info("Successfully fetched elastic search values for type:"
+										+ SystemNameEnum.CUSTOMER_ALSO_BOUGHT.getName() + "and warehouseId: "
+										+ warehouseId + " with " + productCodeSubList.size() + " products.");
+							} catch (Exception e) {
+								logger.error("Error while fetching from elastic search for product codes : "
+										+ crossProductCode + " : " + ExceptionUtils.getStackTrace(e));
+//								apiResponseBaseDto = utilities.commonResponse(apiResponseBaseDto, new Object(), "Error while fetching elastic search result",
+//										HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR.value(), null);
+							}
+						} else {
+							return apiResponseBaseDto = utilities.commonResponse(apiResponseBaseDto, new Object(),
+									"No content found", HttpStatus.NO_CONTENT, HttpStatus.NO_CONTENT.value(), null);
+						}
+					}
+
+					if (!StringUtils.isEmpty(offerType) && offerType.equals(SystemNameEnum.PRODUCTS_BY_BRAND.getName())
+							&& !StringUtils.isEmpty(productCode)) {
+
+						List<String> productCodeList = cacheService.moreProductsByBrand(warehouseId, pageNumber,
+								pageSize, productCode);
+
+						if (CollectionUtils.isEmpty(productCodeList)) {
+							return apiResponseBaseDto = utilities.commonResponse(apiResponseBaseDto, new Object(),
+									"No content found", HttpStatus.NO_CONTENT, HttpStatus.NO_CONTENT.value(), null);
+
+						} else {
+							List<ElasticSearchResponseDto> elasticSearchProductDtos = crossSellingElasticSearch(
+									productCodeList, warehouseId, variantId, pageSize);
+							responseMap.put(SystemNameEnum.PRODUCTS_BY_BRAND.getName(), elasticSearchProductDtos);
+						}
+
+					}
+					if (offerType.equals(SystemNameEnum.TOP_SELLING_HEALTHCARE_ESSENTIALS.getName())
+							&& !StringUtils.isBlank(productCode)) {
+
+						List<String> productCodeList = cacheService.topSellingProducts(warehouseId, productCode,
+								pageSize, pageNumber);
+						if (CollectionUtils.isEmpty(productCodeList)) {
+							return apiResponseBaseDto = utilities.commonResponse(apiResponseBaseDto, new Object(),
+									"No content found", HttpStatus.NO_CONTENT, HttpStatus.NO_CONTENT.value(), null);
+
+						} else {
+							List<ElasticSearchResponseDto> elasticSearchProductDtos = crossSellingElasticSearch(
+									productCodeList, warehouseId, variantId, pageSize);
+							responseMap.put(SystemNameEnum.TOP_SELLING_HEALTHCARE_ESSENTIALS.getName(),
+									elasticSearchProductDtos);
+						}
+					}
+
+				}
+				apiResponseBaseDto = utilities.commonResponse(apiResponseBaseDto, responseMap,
+						"Data fetched successfully", HttpStatus.OK, HttpStatus.OK.value(), null);
+			} else {
+				logger.error("Invalid session Token has been sent!");
+				throw new BussinessException("Invalid session Token has been sent!", HttpStatus.UNAUTHORIZED);
+			}
+			if (apiResponseBaseDto != null) {
+				long endTime = System.nanoTime();
+				apiResponseBaseDto
+						.setTimeTakenInMs(TimeUnit.MILLISECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS));
+			}
+		} catch (Exception e) {
+			logger.error("Error while fetching elastic search result with error : " + ExceptionUtils.getStackTrace(e));
+			throw new TechnicalException("Error while fetching elastic search result",
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		return apiResponseBaseDto;
 	}
