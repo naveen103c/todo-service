@@ -1,4 +1,4 @@
-	public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode jsonNode,
+public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode jsonNode,
 			boolean isSuggestionRequired, boolean isMultiSearch, String companyNameUrlSuffix) throws Exception, BussinessException {
 
 		logger.info("Parsing response for elastic search for isSuggestionRequired :" + isSuggestionRequired
@@ -210,7 +210,13 @@ String subsPackStr = getStringValue(sourceJson, "subs_pack");
 									productSearchDto.setSubsSavingPercentage(df2.format(Double.parseDouble(savingsPercentage)));
 								}
 						
-					}
+						}
+						 else {
+								productSearchDto.setDiscount(
+										Double.parseDouble(df2.format((getDoubleValue(sourceJson, "original_base_discount")))));
+								productSearchDto.setSellingPrice(Double.parseDouble(df2.format(productSearchDto.getMrp()
+										- ((productSearchDto.getMrp() * productSearchDto.getDiscount()) / 100))));
+							}
 					if (productSearchDto.isSubsFound() && isSuggestionRequired && !productSearchDto.getProductCode()
 							.equals(getStringValue(sourceJson, "subs_product_code"))) {
 						ElasticSearchProductDto subsProductDto = new ElasticSearchProductDto();
