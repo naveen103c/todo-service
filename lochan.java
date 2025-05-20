@@ -138,7 +138,7 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 										productSearchDto.getMrp()
 										/ Double.parseDouble(productSearchDto.getPackSize()))
 						+ "/" + productSearchDto.getUnit());
-	}
+	                }
 					
 					
 					String orgCountryOfOrigin = null;
@@ -178,18 +178,18 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 										/ (getLongValue(sourceJson, "sub_recommended_qty")))));
 
 						if(unitPriceCalcEligible){
-							if (StringUtils.isNotBlank(sellingPriceStr)) {
+							if (StringUtils.isNotBlank(sellingPriceStr)) {  
 					        sellingPriceStr = sellingPriceStr.replaceAll("[^0-9.]", "");  // Remove ₹ and unit text
 					        if (!sellingPriceStr.isEmpty()) {
 					            sellingPricePerUnit = Double.parseDouble(sellingPriceStr);
+					            }
 					        }
-					    }
 
 					    double subsSellingPrice = getDoubleValue(sourceJson, "subs_selling_price");
 					    long subRecommendedQty = getLongValue(sourceJson, "sub_recommended_qty");
 
 					    double subsPack = 1.0;
-String subsPackStr = getStringValue(sourceJson, "subs_pack");
+                        String subsPackStr = getStringValue(sourceJson, "subs_pack");
 					    if (StringUtils.isNotBlank(subsPackStr)) {
 					        subsPack = Double.parseDouble(subsPackStr);
 					    }
@@ -211,7 +211,7 @@ String subsPackStr = getStringValue(sourceJson, "subs_pack");
 								}
 						
 						}
-						 else {
+                        }else {
 								productSearchDto.setDiscount(
 										Double.parseDouble(df2.format((getDoubleValue(sourceJson, "original_base_discount")))));
 								productSearchDto.setSellingPrice(Double.parseDouble(df2.format(productSearchDto.getMrp()
