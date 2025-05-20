@@ -179,8 +179,6 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 						productSearchDto.setSellingPrice(
 								Double.parseDouble(df2.format((getDoubleValue(sourceJson, "subs_selling_price"))
 										/ (getLongValue(sourceJson, "sub_recommended_qty")))));
-
-						 if(unitPriceCalcEligible) {
 							String savingsPercentage = getStringValue(sourceJson, "savings_percentage");
 							if (StringUtils.isNotBlank(savingsPercentage) && savingsPercentage.contains("%")) {
 								savingsPercentage = savingsPercentage.replace("%", "");
@@ -188,33 +186,7 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 										.setSubsSavingPercentage(df2.format(Double.parseDouble(savingsPercentage)) + "%");
 								} else {
 									productSearchDto.setSubsSavingPercentage(df2.format(Double.parseDouble(savingsPercentage)));
-								}
-						} else {
-							 String sellingPriceStr = productSearchDto.getPricePerUnitLabel();
-							    double sellingPricePerUnit = 0.0;
-							if (StringUtils.isNotBlank(sellingPriceStr)) {
-					        sellingPriceStr = sellingPriceStr.replaceAll("[^0-9.]", "");  // Remove ₹ and unit text
-					        if (!sellingPriceStr.isEmpty()) {
-					            sellingPricePerUnit = Double.parseDouble(sellingPriceStr);
-					        }
-					    }
-
-					    double subsSellingPrice = getDoubleValue(sourceJson, "subs_selling_price");
-					    long subRecommendedQty = getLongValue(sourceJson, "sub_recommended_qty");
-
-					    double subsPack = 1.0;
-                        String subsPackStr = getStringValue(sourceJson, "subs_pack");
-					    if (StringUtils.isNotBlank(subsPackStr)) {
-					        subsPack = Double.parseDouble(subsPackStr);
-					    }
-					    double savingsValue = (sellingPricePerUnit - ((subsSellingPrice / subRecommendedQty) / subsPack)) 
-					                        * (subRecommendedQty * subsPack);
-
-					    double calculatedSavingsPercentage = (savingsValue / (sellingPricePerUnit * (subRecommendedQty * subsPack))) * 100;
-
-					    productSearchDto.setSubsSavingPercentage(df2.format(calculatedSavingsPercentage) + "%");
-						
-						}
+								}			
 						}
 						 else {
 								productSearchDto.setDiscount(
@@ -229,7 +201,7 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 
 						subsProductDto.setSkuName(getStringValue(sourceJson, "subs_sku_name"));
 						subsProductDto.setProductCode(getStringValue(sourceJson, "subs_product_code"));
-
+                        if(unitPriceCalcEligible) {
 						String savingsPercentage = getStringValue(sourceJson, "savings_percentage");
 						if (StringUtils.isNotBlank(savingsPercentage) && savingsPercentage.contains("%")) {
 							savingsPercentage = savingsPercentage.replace("%", "");
@@ -238,6 +210,11 @@ public List<ElasticSearchResponseDto> mapJsonToElasticSearchResponse(JsonNode js
 						} else {
 							productSearchDto.setSubsSavingPercentage(df2.format(Double.parseDouble(savingsPercentage)));
 						}
+                        }else{
+                            double subsSellingPrice = getDoubleValue(sourceJson, "subs_selling_price");
+                            double calculatedSavingsPercentage =100-((productSearchDto.getSellingPrice()-subsSellingPrice)/productSearchDto.getSellingPrice())*100;
+                            productSearchDto.setSubsSavingPercentage(df2.format(calculatedSavingsPercentage)+ "%");
+                        }
 						
 						subsProductDto.setMrp(Double.parseDouble(df2.format(getDoubleValue(sourceJson, "subs_mrp"))));
 						Long sub_recommended_qty = getLongValue(sourceJson, "sub_recommended_qty");
