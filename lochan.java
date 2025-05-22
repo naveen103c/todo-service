@@ -11,15 +11,15 @@ List<MedicineMaster> medicineMasterList = null;
 								CxCategoryEnum.UNIT_PRICE_CALCULATION.getCategoryName(), true, deviceId);
 				customerId = customerCategoryForCalc.getCustomerId();
 			}
-			List<CustomerCategory> customerCategory = customerCategoryRepository
-					.findByCustomerIdAndCategoryTypeAndActive(customerId,
-							CxCategoryEnum.UNIT_PRICE_CALCULATION.getCategoryName(), true);
-			if (customerCategory.size() > 0) {
-				CustomerCategory customerCategoryData = customerCategory.stream()
-						.filter(t -> t.getCategory().equalsIgnoreCase("B")).findFirst().orElse(null);
-				if (customerCategoryData != null) {
-					unitPriceCalcEligible = false;
-				}
+		}
+		List<CustomerCategory> customerCategory = customerCategoryRepository
+				.findByCustomerIdAndCategoryTypeAndActive(customerId,
+						CxCategoryEnum.UNIT_PRICE_CALCULATION.getCategoryName(), true);
+		if (customerCategory.size() > 0) {
+			CustomerCategory customerCategoryData = customerCategory.stream()
+					.filter(t -> t.getCategory().equalsIgnoreCase("B")).findFirst().orElse(null);
+			if (customerCategoryData != null) {
+				unitPriceCalcEligible = false;
 			}
 		}
 		JsonNode responses = jsonNode.get("hits");
